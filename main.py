@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 
 TASK_DIFFICULTY_IDX = 0
+VERBOSE_IDX = 1
+SKILL_REQUIREMENT_IDX = 2
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
@@ -22,15 +24,25 @@ soup = BeautifulSoup(response.content, 'html.parser')
 
 # full div with point info and task descr
 rows = soup.find_all("tr", attrs={"data-taskid": True})
+points_reference = {
+                    "Beginner": 5,
+                    "Easy": 5,
+                    "Medium": 25,
+                    "Hard": 50,
+                    "Elite": 125,
+                    "Master": 250
+                    }
 
 # point info: span title
 # text within td
-for r in rows[:1]:
-    task_wording = r.find_all("td", attrs={"data-sort-value": True})
-    if task_wording:
-        # Access nested span
-        task_difficulty = task_wording[TASK_DIFFICULTY_IDX].find("span", title=True)["title"]
-    verbose_description = r.find("td", attrs={}).get_text(" ", strip=True)
+for r in rows[1:2]:
+    cols = r.find_all("td")
+    # task_info = r.find_all("td", attrs={"data-sort-value": True})
+    if cols:
+        task_difficulty = cols[TASK_DIFFICULTY_IDX].find("span", title=True)["title"]
+        task_title = cols[TASK_DIFFICULTY_IDX].get_text(" ", strip=True)
+        points = points_reference[task_difficulty]
+        verbose = cols[VERBOSE_IDX].get_text(" ", strip=False)
 
 # print(soup.prettify())
 
