@@ -4,7 +4,7 @@ import pandas as pd
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Alignment
 from openpyxl.worksheet.table import Table, TableStyleInfo
-from openpyxl.worksheet.errors import IgnoredErrors
+import re
 from openpyxl.utils import get_column_letter
 
 TASK_DIFFICULTY_IDX = 0
@@ -13,6 +13,24 @@ SKILL_REQUIREMENT_IDX = 2
 PERCENT_COMPL_IDX = 3
 rows_to_wrap = ["A", "B", "E"]
 PERCENTAGE_ROW_LETTER = "F"
+
+def text_cleaner(input_text):
+    result = input_text
+    # Replace multiple spaces with one space
+    result = re.sub(r' +', ' ', result)
+    replacements = [
+        (" .", "."),
+        ("\n", ""),
+        ("( ", "("),
+        (" )", ")"),
+        (" ,", ","),
+        (" ;", ";"),
+        ('[ ', '['),
+        (' ]', ']')
+    ]
+    for old, new in replacements:
+        result = result.replace(old, new)
+    return result.strip()
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
@@ -40,15 +58,6 @@ points_reference = {
                     "Master": 250
                     }
 
-# data = {
-#     "Task": [],
-#     "Description": [],
-#     "Difficulty": [],
-#     "Points": [],
-#     "Requirement(s)": [],
-#     "% Completed": []
-# }
-
 wb = Workbook()
 ws = wb.active
 ws.title = "Tasks"
@@ -63,31 +72,26 @@ for r in rows:
         task_difficulty = cols[TASK_DIFFICULTY_IDX].find("span", title=True)["title"]
         task_title = cols[TASK_DIFFICULTY_IDX].get_text(" ", strip=True)
         points = points_reference[task_difficulty]
-        verbose = cols[VERBOSE_IDX].get_text(" ", strip=False)
-
-        verbose = (
-            verbose
-            .replace("  ", " ")
-            .replace(" .", ".")
-            .replace("\n", "")
-        )
-
-        skill_req = cols[SKILL_REQUIREMENT_IDX].get_text(" ", strip=True)
+        verbose = text_cleaner(cols[VERBOSE_IDX].get_text(" ", strip=False))
+        skill_req = text_cleaner(cols[SKILL_REQUIREMENT_IDX].get_text(" ", strip=True))
         percent_compl = cols[PERCENT_COMPL_IDX].get_text(" ", strip=True)
 
-        # data["Task"].append(task_title)
-        # data["Description"].append(verbose)
-        # data["Difficulty"].append(task_difficulty)
-        # data["Points"].append(points)
-        # data["Requirement(s)"].append(skill_req)
-        # data["% Completed"].append(percent_compl)
+        if not '<' in percent_compl:
+            percent_compl = percent_compl.replace("%", "")
+            try:
+                percent_compl = int(percent_compl)
+            except ValueError:
+                try:
+                    percent_compl = float(percent_compl)
+                except:
+                    percent_compl = -1
+                    print("Invalid Value!")
 
         ws.append([task_title, verbose, task_difficulty, points, skill_req, percent_compl])
 
 num_rows = ws.max_row       # number of rows with data (includes header)
 num_cols = ws.max_column    # number of columns with data
 
-# Get Excel-style column letters, e.g. A, B, C
 start_cell = "A1"
 end_cell = f"{get_column_letter(num_cols)}{num_rows}"
 table_ref = f"{start_cell}:{end_cell}"
@@ -95,32 +99,38 @@ table_ref = f"{start_cell}:{end_cell}"
 table = Table(displayName="Tasks", ref=table_ref)
 ws.add_table(table)
 
-# df = pd.DataFrame(data)
 file_name = "OSRS_League_Tasks.xlsx"
-# df.to_excel(file_name, index=False)
 
-# wb = load_workbook(file_name)
-# ws = wb.active
+ws.column_dimensions['A'].width = 20
+ws.column_dimensions['B'].width = 30
+ws.column_dimensions['E'].width = 30
 
 for col in ws.columns:
     max_length = 0
     col_letter = col[0].column_letter
     if col_letter in rows_to_wrap:
-        ws.column_dimensions[col_letter].width = 30
         for cell in col:
             try:
                 if cell.value:
                     cell.alignment = Alignment(
                             wrap_text=True,
-                            horizontal=cell.alignment.horizontal or "left",
-                            vertical=cell.alignment.vertical or "top"
+                            horizontal="left",
+                            vertical="top"
                         )
             except:
                 pass
+    if col_letter == PERCENTAGE_ROW_LETTER:
+        for cell in col:
+            cell.alignment = Alignment(
+                                horizontal="right",
+                                vertical="bottom"
+                            )
+            if isinstance(cell.value, int):
+                cell.value /= 100
+                cell.number_format = '0%'
+            elif isinstance(cell.value, float):
+                cell.value /= 100
+                cell.number_format = '0.0%'
 
 
 wb.save(file_name)
-
-# print(data)
-# print(soup.prettify())
-
