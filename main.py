@@ -1,14 +1,18 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Alignment
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.worksheet.errors import IgnoredErrors
+from openpyxl.utils import get_column_letter
 
 TASK_DIFFICULTY_IDX = 0
 VERBOSE_IDX = 1
 SKILL_REQUIREMENT_IDX = 2
 PERCENT_COMPL_IDX = 3
-rows_to_wrap = ["B", "E"]
+rows_to_wrap = ["A", "B", "E"]
+PERCENTAGE_ROW_LETTER = "F"
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
@@ -27,7 +31,6 @@ response = requests.get(url, headers=headers)
 soup = BeautifulSoup(response.content, 'html.parser')
 
 # full div with point info and task descr
-rows = soup.find_all("tr", attrs={"data-taskid": True})
 points_reference = {
                     "Beginner": 5,
                     "Easy": 5,
@@ -37,15 +40,21 @@ points_reference = {
                     "Master": 250
                     }
 
-data = {
-    "Task": [],
-    "Description": [],
-    "Difficulty": [],
-    "Points": [],
-    "Requirement(s)": [],
-    "% Completed": []
-}
+# data = {
+#     "Task": [],
+#     "Description": [],
+#     "Difficulty": [],
+#     "Points": [],
+#     "Requirement(s)": [],
+#     "% Completed": []
+# }
 
+wb = Workbook()
+ws = wb.active
+ws.title = "Tasks"
+ws.append(["Task", "Description", "Difficulty", "Points", "Requirement(s)", "% Completed"])
+
+rows = soup.find_all("tr", attrs={"data-taskid": True})
 # point info: span title
 # text within td
 for r in rows:
@@ -66,33 +75,49 @@ for r in rows:
         skill_req = cols[SKILL_REQUIREMENT_IDX].get_text(" ", strip=True)
         percent_compl = cols[PERCENT_COMPL_IDX].get_text(" ", strip=True)
 
-        data["Task"].append(task_title)
-        data["Description"].append(verbose)
-        data["Difficulty"].append(task_difficulty)
-        data["Points"].append(points)
-        data["Requirement(s)"].append(skill_req)
-        data["% Completed"].append(percent_compl)
+        # data["Task"].append(task_title)
+        # data["Description"].append(verbose)
+        # data["Difficulty"].append(task_difficulty)
+        # data["Points"].append(points)
+        # data["Requirement(s)"].append(skill_req)
+        # data["% Completed"].append(percent_compl)
 
-df = pd.DataFrame(data)
+        ws.append([task_title, verbose, task_difficulty, points, skill_req, percent_compl])
+
+num_rows = ws.max_row       # number of rows with data (includes header)
+num_cols = ws.max_column    # number of columns with data
+
+# Get Excel-style column letters, e.g. A, B, C
+start_cell = "A1"
+end_cell = f"{get_column_letter(num_cols)}{num_rows}"
+table_ref = f"{start_cell}:{end_cell}"
+
+table = Table(displayName="Tasks", ref=table_ref)
+ws.add_table(table)
+
+# df = pd.DataFrame(data)
 file_name = "OSRS_League_Tasks.xlsx"
-df.to_excel(file_name, index=False)
+# df.to_excel(file_name, index=False)
 
-wb = load_workbook(file_name)
-ws = wb.active
+# wb = load_workbook(file_name)
+# ws = wb.active
 
 for col in ws.columns:
     max_length = 0
     col_letter = col[0].column_letter
-    for cell in col:
-        try:
-            if cell.value:
-                max_length = max(max_length, len(str(cell.value)))
-                if col_letter in rows_to_wrap:
-                    cell.alignment = Alignment(wrap_text=True)
-        except:
-            pass
-    adjusted_width = max_length
-    ws.column_dimensions[col_letter].width = adjusted_width
+    if col_letter in rows_to_wrap:
+        ws.column_dimensions[col_letter].width = 30
+        for cell in col:
+            try:
+                if cell.value:
+                    cell.alignment = Alignment(
+                            wrap_text=True,
+                            horizontal=cell.alignment.horizontal or "left",
+                            vertical=cell.alignment.vertical or "top"
+                        )
+            except:
+                pass
+
 
 wb.save(file_name)
 
