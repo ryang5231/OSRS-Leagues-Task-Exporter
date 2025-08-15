@@ -1,53 +1,29 @@
-import requests
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
 from openpyxl.styles import Alignment
 from openpyxl.worksheet.table import Table
 import re
 from openpyxl.utils import get_column_letter
+import helper
 
-TASK_DIFFICULTY_IDX = 0
-VERBOSE_IDX = 1
-SKILL_REQUIREMENT_IDX = 2
-PERCENT_COMPL_IDX = 3
-rows_to_wrap = ["A", "B", "E"]
-PERCENTAGE_ROW_LETTER = "F"
+IDX_TASK_DIFFICULTY = 0
+IDX_VERBOSE_DESCRIPTION = 1
+IDX_SKILL_REQUIREMENTS = 2
+IDX_PERCENT_COMPL = 3
+WRAP_COL_LETTERS = ["A", "B", "E"]
+CUSTOM_COL_SETTINGS = {
+                        "A": {"wrap": True, "col_width": 20},
+                        "B": {"wrap": True, "col_width": 20},
+                        "E": {"wrap": True, "col_width": 30}
+                    }
 TASKS_URL = 'https://oldschool.runescape.wiki/w/Shattered_Relics_League/Tasks'
-REQUEST_HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
-                    (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Referer": "https://www.google.com/",
-    }
 TABLE_HEADERS = ["Task", "Description", "Difficulty", "Points", "Requirement(s)", "% Completed"]
 FILE_NAME = "OSRS_Shattered_League_Tasks.xlsx"
 SHEET_NAME = "Tasks"
 
-def text_cleaner(input_text):
-    result = input_text
-    # Replace multiple spaces with one space
-    result = re.sub(r' +', ' ', result)
-    replacements = [
-        (" .", "."),
-        ("\n", ""),
-        ("( ", "("),
-        (" )", ")"),
-        (" ,", ","),
-        (" ;", ";"),
-        ('[ ', '['),
-        (' ]', ']')
-    ]
-    for old, new in replacements:
-        result = result.replace(old, new)
-    return result.strip()
-
-
 def get_task_excel():
-    response = requests.get(TASKS_URL, headers=REQUEST_HEADERS)
 
-    # print(response.status_code)
-    # print(response.content)
+    response = helper.fetch_html(TASKS_URL)
 
     soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -72,12 +48,12 @@ def get_task_excel():
     for r in rows:
         cols = r.find_all("td")
         if cols:
-            task_difficulty = cols[TASK_DIFFICULTY_IDX].find("span", title=True)["title"]
-            task_title = cols[TASK_DIFFICULTY_IDX].get_text(" ", strip=True)
+            task_difficulty = cols[IDX_TASK_DIFFICULTY].find("span", title=True)["title"]
+            task_title = cols[IDX_TASK_DIFFICULTY].get_text(" ", strip=True)
             points = points_reference[task_difficulty]
-            verbose = text_cleaner(cols[VERBOSE_IDX].get_text(" ", strip=False))
-            skill_req = text_cleaner(cols[SKILL_REQUIREMENT_IDX].get_text(" ", strip=True))
-            percent_compl = cols[PERCENT_COMPL_IDX].get_text(" ", strip=True)
+            verbose = helper.text_cleaner(cols[IDX_VERBOSE_DESCRIPTION].get_text(" ", strip=False))
+            skill_req = helper.text_cleaner(cols[IDX_SKILL_REQUIREMENTS].get_text(" ", strip=True))
+            percent_compl = cols[IDX_PERCENT_COMPL].get_text(" ", strip=True)
 
             if not '<' in percent_compl:
                 percent_compl = percent_compl.replace("%", "")
@@ -102,36 +78,6 @@ def get_task_excel():
     table = Table(displayName=SHEET_NAME, ref=table_ref)
     ws.add_table(table)
 
-    ws.column_dimensions['A'].width = 20
-    ws.column_dimensions['B'].width = 30
-    ws.column_dimensions['E'].width = 30
-
-    for col in ws.columns:
-        max_length = 0
-        col_letter = col[0].column_letter
-        if col_letter in rows_to_wrap:
-            for cell in col:
-                try:
-                    if cell.value:
-                        cell.alignment = Alignment(
-                                wrap_text=True,
-                                horizontal="left",
-                                vertical="top"
-                            )
-                except:
-                    pass
-        if col_letter == PERCENTAGE_ROW_LETTER:
-            for cell in col:
-                cell.alignment = Alignment(
-                                    horizontal="right",
-                                    vertical="bottom"
-                                )
-                if isinstance(cell.value, int):
-                    cell.value /= 100
-                    cell.number_format = '0%'
-                elif isinstance(cell.value, float):
-                    cell.value /= 100
-                    cell.number_format = '0.0%'
-
+    ws = helper.format_columns(ws, CUSTOM_COL_SETTINGS)
 
     wb.save(FILE_NAME)
