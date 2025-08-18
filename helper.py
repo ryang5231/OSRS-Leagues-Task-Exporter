@@ -1,6 +1,7 @@
 import requests
-from openpyxl.styles import Alignment
+from openpyxl.styles import Alignment, numbers, NamedStyle
 from requests import RequestException
+import re
 
 REQUEST_HEADERS = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 \
@@ -38,7 +39,7 @@ def fetch_html(task_url):
         print(f"Link is not accessible due to: {e}")
     finally:
         if response is not None:
-            print(f"{response.status_code}, {response.content}")
+            print(f"Status Code returned: {response.status_code}")
         else:
             print("No response received.")
 
@@ -50,19 +51,28 @@ def format_columns(worksheet, custom_cols):
     for col in columns:
         col_letter = col[0].column_letter
         if col_letter in custom_cols:
-            if custom_cols[col_letter]["wrap"]:
-                    for cell in col:
-                        try:
-                            if cell.value:
-                                cell.alignment = Alignment(
-                                            wrap_text=True,
-                                            horizontal="left",
-                                            vertical="top"
-                                        )
-                        except:
-                            pass
-            if custom_cols[col_letter]["col_width"]:
-                columns.column_dimensions[col_letter].width = custom_cols[col_letter]["col_width"]
+            if "wrap" in custom_cols[col_letter]:
+                for cell in col:
+                    try:
+                        if cell.value:
+                            cell.alignment = Alignment(
+                                        wrap_text=True,
+                                        horizontal="left",
+                                        vertical="top"
+                                    )
+                    except:
+                        pass
+            if "col_width" in custom_cols[col_letter]:
+                worksheet.column_dimensions[col_letter].width = custom_cols[col_letter]["col_width"]
+            # if "format" in custom_cols[col_letter]:
+            #     for cell in col:
+            #         try:
+            #             if cell.value:
+            #                 cell.style = NamedStyle(name="text_style")
+            #                 cell.number_format = '@'
+            #         except:
+            #             print("no")
+            #             pass
         else:
             for cell in col:
                 try:

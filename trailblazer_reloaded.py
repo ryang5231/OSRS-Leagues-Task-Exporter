@@ -3,10 +3,11 @@ import xlsxwriter
 import helper
 import io
 
-IDX_TASK_DIFFICULTY = 0
-IDX_VERBOSE_DESCRIPTION = 1
+IDX_TASK_TITLE = 1
+IDX_VERBOSE_DESCRIPTION = 2
+IDX_POINTS = 3
 IDX_SKILL_REQUIREMENTS = 2
-IDX_PERCENT_COMPL = 3
+IDX_PERCENT_COMPL = 5
 
 CUSTOM_COL_SETTINGS = {
     "A": {"wrap": True, "col_width": 20},
@@ -16,8 +17,8 @@ CUSTOM_COL_SETTINGS = {
     "G": {"col_width": 15},
 }
 
-TASKS_URL = 'https://oldschool.runescape.wiki/w/Shattered_Relics_League/Tasks'
-TABLE_HEADERS = ["Task", "Description", "Difficulty", "Points", "Requirement(s)", "% Completed", "Completed?"]
+TASKS_URL = 'https://oldschool.runescape.wiki/w/Trailblazer_Reloaded_League/Tasks'
+TABLE_HEADERS = ["Area", "Task", "Description", "Difficulty", "Points", "Requirement(s)", "% Completed", "Completed?"]
 SHEET_NAME = "Tasks"
 
 def get_task_excel():
@@ -25,12 +26,11 @@ def get_task_excel():
     soup = BeautifulSoup(response.content, 'html.parser')
 
     points_reference = {
-        "Beginner": 5,
-        "Easy": 5,
-        "Medium": 25,
-        "Hard": 50,
-        "Elite": 125,
-        "Master": 250
+        "Easy": 10,
+        "Medium": 40,
+        "Hard": 80,
+        "Elite": 250,
+        "Master": 400
     }
 
     # Create workbook and worksheet
@@ -65,30 +65,38 @@ def get_task_excel():
     for col, header in enumerate(TABLE_HEADERS):
         worksheet.write(0, col, header, header_format)
     
-    worksheet.ignore_errors({'number_stored_as_text': 'F:F'})
+    worksheet.ignore_errors({'number_stored_as_text': 'G:G'})
 
     # Get data rows
     rows = soup.find_all("tr", attrs={"data-taskid": True})
     
     row_num = 1
+    print(helper.text_cleaner(cols[IDX_VERBOSE_DESCRIPTION].get_text(" ", strip=False)))
     for r in rows:
         cols = r.find_all("td")
         if cols:
-            task_difficulty = cols[IDX_TASK_DIFFICULTY].find("span", title=True)["title"]
-            task_title = cols[IDX_TASK_DIFFICULTY].get_text(" ", strip=True)
-            points = points_reference[task_difficulty]
+            area = r["data-tbz-area-for-filtering"]
+            task_title = cols[IDX_TASK_TITLE].get_text(" ", strip=True)
             verbose = helper.text_cleaner(cols[IDX_VERBOSE_DESCRIPTION].get_text(" ", strip=False))
-            skill_req = helper.text_cleaner(cols[IDX_SKILL_REQUIREMENTS].get_text(" ", strip=True))
+            points = cols[IDX_POINTS].get_text(" ", strip=True)
             percent_compl = cols[IDX_PERCENT_COMPL].get_text(" ", strip=True)
 
+            # task_difficulty = cols[IDX_TASK_DIFFICULTY].find("span", title=True)["title"]
+
+            
+            # points = points_reference[task_difficulty]
+            # skill_req = helper.text_cleaner(cols[IDX_SKILL_REQUIREMENTS].get_text(" ", strip=True))
+            
+
             # Write data with appropriate formatting
-            worksheet.write(row_num, 0, task_title, wrap_format)  # Task
-            worksheet.write(row_num, 1, verbose, wrap_format)     # Description
-            worksheet.write(row_num, 2, task_difficulty, center_format)  # Difficulty
-            worksheet.write(row_num, 3, points, center_format)    # Points
-            worksheet.write(row_num, 4, skill_req, wrap_format)   # Requirements
-            worksheet.write_string(row_num, 5, percent_compl, text_format)  # % Completed as text
-            worksheet.write(row_num, 6, False)                    # Completed checkbox
+            worksheet.write(row_num, 0, area, wrap_format)
+            worksheet.write(row_num, 1, task_title, wrap_format)
+            # worksheet.write(row_num, 1, verbose, wrap_format)     # Description
+            # worksheet.write(row_num, 2, task_difficulty, center_format)  # Difficulty
+            # worksheet.write(row_num, 3, points, center_format)    # Points
+            # worksheet.write(row_num, 4, skill_req, wrap_format)   # Requirements
+            # worksheet.write_string(row_num, 5, percent_compl, text_format)  # % Completed as text
+            # worksheet.write(row_num, 6, False)                    # Completed checkbox
             
             row_num += 1
 
