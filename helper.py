@@ -11,6 +11,15 @@ REQUEST_HEADERS = {
         "Referer": "https://www.google.com/",
     }
 
+PERCENTAGE_COMPL_FILL_COLOR = {
+    "very_rare": "#FF6262", # <0.1%
+    "rare": "#FF863C",      # 0.1 - 0.9%
+    "uncommon": "#FFED4C",  # 1 - 9.9%
+    "common": "#56E156",    # 10 - 49.9%
+    "always": "#AFEEEE",    # 50 - 100%
+    "default": "#FFFFFF",   # for invalid values
+}
+
 def text_cleaner(input_text):
     result = input_text
     # Replace multiple spaces with one space
@@ -44,3 +53,48 @@ def fetch_html(task_url):
             print("No response received.")
 
     return response
+
+def parse_percent(percent_string):
+    if percent_string == "<0.1%":
+        return 0.0
+    try:
+        return float(percent_string.replace('%', '')) / 100.0
+    except ValueError:
+        return None
+
+def construct_percent_fill_format(percent_string):
+    choice = "default"
+    num_format = '0%'
+    if percent_string == "<0.1%":
+        choice = "very_rare"
+        return {
+                'num_format': num_format,
+                'align': 'center',
+                'valign': 'vcenter',
+                'bg_color': PERCENTAGE_COMPL_FILL_COLOR[choice]
+            }
+    else:
+        try:
+            percent_string = percent_string.replace('%', '')
+            percent = float(percent_string)
+
+            if not percent.is_integer():
+                num_format = '0.0%'
+            if 0.1 <= percent < 10:
+                choice = "rare"
+            elif 0.1 <= percent < 10:
+                choice = "uncommon"
+            elif 10 <= percent < 50:
+                choice = "common"
+            elif 50 <= percent <= 100:
+                choice = "always"
+        except:
+            print('the percentage could not be converted into a float! returning default colour...')
+        finally:
+            return {
+                'num_format': num_format,
+                'align': 'center',
+                'valign': 'vcenter',
+                'bg_color': PERCENTAGE_COMPL_FILL_COLOR[choice]
+            }
+

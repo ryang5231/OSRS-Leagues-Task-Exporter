@@ -16,18 +16,13 @@ CUSTOM_COL_SETTINGS = {
     "D": {"wrap": True, "col_width": 30},
 }
 
-PERCENTAGE_COMPL_FILL_COLOR = {
-    "very_rare": {"bg_color": "#FF6262"}, # <0.1%
-    "rare": {"bg_color": "FF863C"},         # 0.1 - 0.9%
-    "uncommon" : {"bg_color": "FFED4C"},    # 1 - 9.9%
-    "common" : {"bg_color": "56E156"},      # 10 - 49.9%
-    "always" : {"bg_color": "AFEEEE"},      # >= 50%
-}
-
 REGION_ATTRIBUTE = "data-tbz-area-for-filtering"
 SHEET_NAME = "Tasks"
 TASKS_URL = 'https://oldschool.runescape.wiki/w/Trailblazer_Reloaded_League/Tasks'
 TABLE_HEADERS = ["Area", "Task", "Description", "Requirement(s)", "Difficulty", "Points", "% Completed", "Done?"]
+
+COL_NUM_PERCENT_COMPL = len(TABLE_HEADERS) - 2
+COL_NUM_COMPLETION_TICK = len(TABLE_HEADERS) - 1
 
 def get_task_excel():
     response = helper.fetch_html(TASKS_URL)
@@ -41,9 +36,9 @@ def get_task_excel():
         400 : "Master",
     }
 
-    workbook = xlsxwriter.Workbook("OSRS_4_Trailblazer_Reloaded_Tasks.xlsx")
-    # output = io.BytesIO()
-    # workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+    # workbook = xlsxwriter.Workbook("OSRS_4_Trailblazer_Reloaded_Tasks.xlsx")
+    output = io.BytesIO()
+    workbook = xlsxwriter.Workbook(output, {"in_memory": True})
     worksheet = workbook.add_worksheet(SHEET_NAME)
 
     # Define formats
@@ -58,16 +53,13 @@ def get_task_excel():
         'valign': 'top'
     })
     
-    text_format = workbook.add_format({
-        'num_format': '@',  # Text format
-        'text_wrap': True,
-        'valign': 'top'
-    })
     
     center_format = workbook.add_format({
         'align': 'center',
         'valign': 'vcenter'
     })
+
+    checkmark_format = workbook.add_format({"checkbox": True})
 
     for col, header in enumerate(TABLE_HEADERS):
         worksheet.write(0, col, header, header_format)
@@ -88,18 +80,30 @@ def get_task_excel():
             skill_req = helper.text_cleaner(cols[IDX_SKILL_REQUIREMENTS].get_text(" ", strip=True))
             points = int(cols[IDX_POINTS].get_text(" ", strip=True))
             task_difficulty = difficulty_reference[points]
-            percent_compl = cols[IDX_PERCENT_COMPL].get_text(" ", strip=True)
+            percent_str = cols[IDX_PERCENT_COMPL].get_text(" ", strip=True)
 
             area = area.title()
+            percent_val = helper.parse_percent(percent_str)
 
-            worksheet.write(row_num, 0, area, wrap_format)
-            worksheet.write(row_num, 1, task_title, wrap_format)
-            worksheet.write(row_num, 2, verbose, wrap_format)
-            worksheet.write(row_num, 3, skill_req, wrap_format)
-            worksheet.write(row_num, 4, task_difficulty, center_format)
-            worksheet.write(row_num, 5, points, center_format)
-            worksheet.write_string(row_num, 6, percent_compl, text_format)
-            worksheet.write(row_num, 7, False)
+            row_data = [area, task_title, verbose, skill_req, points, task_difficulty, percent_val]
+            percent_format = workbook.add_format(helper.construct_percent_fill_format(percent_str))
+            row_format = {
+                area: wrap_format, 
+                task_title: wrap_format, 
+                verbose: wrap_format, 
+                skill_req: wrap_format, 
+                points: center_format, 
+                task_difficulty: center_format, 
+                percent_val: percent_format,
+            }
+
+            for i, rd in enumerate(row_data):
+                if i == COL_NUM_PERCENT_COMPL:
+                    worksheet.write_number(row_num, i, row_data[i], row_format[rd])
+                else:
+                    worksheet.write(row_num, i, row_data[i], row_format[rd])
+
+            worksheet.write(row_num, COL_NUM_COMPLETION_TICK, False, checkmark_format)
             
             row_num += 1
 
@@ -114,8 +118,6 @@ def get_task_excel():
     worksheet.data_validation(1, 7, row_num - 1, 7, {
         'validate': 'list',
         'source': ['TRUE', 'FALSE'],
-        'input_title': 'Select completion status',
-        'input_message': 'Choose TRUE or FALSE'
     })
 
     column_header_names = []
@@ -132,8 +134,8 @@ def get_task_excel():
 
     workbook.close()
     
-    # output.seek(0)
-    # return output.read()
+    output.seek(0)
+    return output.read()
 
 
 
