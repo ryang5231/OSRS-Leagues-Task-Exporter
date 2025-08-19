@@ -1,5 +1,5 @@
 import requests
-from openpyxl.styles import Alignment, numbers, NamedStyle
+from openpyxl.styles import Alignment
 from requests import RequestException
 import re
 
@@ -23,7 +23,7 @@ def text_cleaner(input_text):
         (" ,", ","),
         (" ;", ";"),
         ('[ ', '['),
-        (' ]', ']')
+        (' ]', ']'),
     ]
     for old, new in replacements:
         result = result.replace(old, new)
@@ -44,45 +44,3 @@ def fetch_html(task_url):
             print("No response received.")
 
     return response
-
-
-def format_columns(worksheet, custom_cols):
-    columns = worksheet.columns
-    for col in columns:
-        col_letter = col[0].column_letter
-        if col_letter in custom_cols:
-            if "wrap" in custom_cols[col_letter]:
-                for cell in col:
-                    try:
-                        if cell.value:
-                            cell.alignment = Alignment(
-                                        wrap_text=True,
-                                        horizontal="left",
-                                        vertical="top"
-                                    )
-                    except:
-                        pass
-            if "col_width" in custom_cols[col_letter]:
-                worksheet.column_dimensions[col_letter].width = custom_cols[col_letter]["col_width"]
-            # if "format" in custom_cols[col_letter]:
-            #     for cell in col:
-            #         try:
-            #             if cell.value:
-            #                 cell.style = NamedStyle(name="text_style")
-            #                 cell.number_format = '@'
-            #         except:
-            #             print("no")
-            #             pass
-        else:
-            for cell in col:
-                try:
-                    if cell.value:
-                        cell.alignment = Alignment(
-                                    wrap_text=True,
-                                    horizontal="left",
-                                    vertical="center"
-                                )
-                except:
-                    pass
-    return worksheet
-
