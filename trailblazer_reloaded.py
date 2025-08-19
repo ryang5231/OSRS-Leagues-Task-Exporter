@@ -23,8 +23,9 @@ TABLE_HEADERS = ["Area", "Task", "Description", "Requirement(s)", "Difficulty", 
 
 COL_NUM_PERCENT_COMPL = len(TABLE_HEADERS) - 2
 COL_NUM_COMPLETION_TICK = len(TABLE_HEADERS) - 1
+ROW_NUM_FIRST_DATA = 1
 
-def get_task_excel():
+def get_task_excel(test_mode_enabled=False):
     response = helper.fetch_html(TASKS_URL)
     soup = BeautifulSoup(response.content, 'html.parser')
 
@@ -36,9 +37,11 @@ def get_task_excel():
         400 : "Master",
     }
 
-    # workbook = xlsxwriter.Workbook("OSRS_4_Trailblazer_Reloaded_Tasks.xlsx")
-    output = io.BytesIO()
-    workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+    if test_mode_enabled:
+        workbook = xlsxwriter.Workbook("OSRS_4_Trailblazer_Reloaded_Tasks.xlsx")
+    else:
+        output = io.BytesIO()
+        workbook = xlsxwriter.Workbook(output, {"in_memory": True})
     worksheet = workbook.add_worksheet(SHEET_NAME)
 
     # Define formats
@@ -56,10 +59,8 @@ def get_task_excel():
     
     center_format = workbook.add_format({
         'align': 'center',
-        'valign': 'vcenter'
+        'valign': 'vcenter',
     })
-
-    checkmark_format = workbook.add_format({"checkbox": True})
 
     for col, header in enumerate(TABLE_HEADERS):
         worksheet.write(0, col, header, header_format)
@@ -103,9 +104,11 @@ def get_task_excel():
                 else:
                     worksheet.write(row_num, i, row_data[i], row_format[rd])
 
-            worksheet.write(row_num, COL_NUM_COMPLETION_TICK, False, checkmark_format)
+            worksheet.insert_checkbox(row_num, COL_NUM_COMPLETION_TICK, False, center_format)
             
             row_num += 1
+
+    last_data_row_num = row_num - 1
 
     # Apply column settings
     for col_letter, settings in CUSTOM_COL_SETTINGS.items():
@@ -115,7 +118,8 @@ def get_task_excel():
             worksheet.set_column(col_index, col_index, settings["col_width"])
 
     # Add data validation for the "Completed?" column (column G, index 6)
-    worksheet.data_validation(1, 7, row_num - 1, 7, {
+    worksheet.data_validation(ROW_NUM_FIRST_DATA, COL_NUM_COMPLETION_TICK,
+                               last_data_row_num, COL_NUM_COMPLETION_TICK, {
         'validate': 'list',
         'source': ['TRUE', 'FALSE'],
     })
@@ -123,7 +127,7 @@ def get_task_excel():
     column_header_names = []
     for col in TABLE_HEADERS:
         column_header_names.append({'header': col})
-    worksheet.add_table(0, 0, row_num - 1, len(column_header_names) - 1, {
+    worksheet.add_table(0, 0, last_data_row_num, COL_NUM_COMPLETION_TICK, {
         'name': SHEET_NAME,
         'style': 'Table Style Medium 2',
         'columns': column_header_names
@@ -134,10 +138,9 @@ def get_task_excel():
 
     workbook.close()
     
-    output.seek(0)
-    return output.read()
-
-
+    if not test_mode_enabled:
+        output.seek(0)
+        return output.read()
 
 if __name__ == "__main__":
-    get_task_excel()
+    get_task_excel(test_mode_enabled=True)
