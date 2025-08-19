@@ -12,8 +12,8 @@ CUSTOM_COL_SETTINGS = {
     "A": {"wrap": True, "col_width": 20},
     "B": {"wrap": True, "col_width": 20},
     "E": {"wrap": True, "col_width": 30},
-    "F": {"col_width": 15},
-    "G": {"col_width": 15},
+    "F": {"col_width": 10},
+    "G": {"col_width": 10},
 }
 
 SHEET_NAME = "Tasks"
@@ -42,7 +42,13 @@ def get_task_excel(test_mode_enabled=False):
     else:
         output = io.BytesIO()
         workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+    
     worksheet = workbook.add_worksheet(SHEET_NAME)
+
+    worksheet.write(ROW_NUM_FIRST_DATA - 1, COL_NUM_COMPLETION_TICK + 2, "Made by: Zekeyyyyy")
+    workbook.set_properties({
+        'author': 'RSN-Zekeyyyyy',
+    })
 
     # Define formats
     header_format = workbook.add_format({
@@ -53,8 +59,7 @@ def get_task_excel(test_mode_enabled=False):
     
     wrap_format = workbook.add_format({
         'text_wrap': True,
-        'valign': 'top',
-        'align': 'center',
+        'align': 'left',
         'valign': 'vcenter'
     })
     
@@ -122,6 +127,42 @@ def get_task_excel(test_mode_enabled=False):
         'validate': 'list',
         'source': ['TRUE', 'FALSE'],
     })
+
+    dark_green_format = workbook.add_format({
+        'bg_color': '#00FF00',
+    })
+
+    # Option 1: Everything gets coloured
+    worksheet.conditional_format(
+        ROW_NUM_FIRST_DATA, 0,
+        last_data_row_num, COL_NUM_COMPLETION_TICK,
+        {
+            'type': 'formula',
+            'criteria': f'=${chr(65+COL_NUM_COMPLETION_TICK)}2=TRUE',
+            'format': dark_green_format
+        }
+    )
+
+    # Option 2: Percentage completed remains uncoloured
+    # worksheet.conditional_format(
+    #     ROW_NUM_FIRST_DATA, 0,
+    #     last_data_row_num, COL_NUM_PERCENT_COMPL - 1,
+    #     {
+    #         'type': 'formula',
+    #         'criteria': f'=${chr(65+COL_NUM_COMPLETION_TICK)}2=TRUE',
+    #         'format': dark_green_format
+    #     }
+    # )
+
+    # worksheet.conditional_format(
+    #     ROW_NUM_FIRST_DATA, COL_NUM_COMPLETION_TICK,
+    #     last_data_row_num, COL_NUM_COMPLETION_TICK,
+    #     {
+    #         'type': 'formula',
+    #         'criteria': f'=${chr(65+COL_NUM_COMPLETION_TICK)}2=TRUE',
+    #         'format': dark_green_format
+    #     }
+    # )
 
     column_header_names = []
     for col in TABLE_HEADERS:
