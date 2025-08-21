@@ -54,6 +54,19 @@ def fetch_html(task_url):
 
     return response
 
+def parse_requirements(data_block):
+    requirements = data_block.get_text(" ", strip=False)
+    spans = data_block.find_all("span")
+    for s in spans:
+        if len(s['class']) > 3:
+            altered = re.sub(r'(\d+)( {1,2})([a-z|\(])', r'\1 coin(s) \3', requirements)
+            if (altered == requirements):
+                requirements.strip()
+                requirements += 'coin(s)'
+            else:
+                requirements = altered
+    return text_cleaner(requirements)
+
 def parse_percent(percent_string):
     if percent_string == "<0.1%":
         return 0.0

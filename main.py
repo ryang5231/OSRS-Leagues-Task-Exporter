@@ -24,7 +24,7 @@ def run_option():
                             },
         # "5-raging_echoes": {
         #                         "caller_function": raging_echoes.get_task_excel,
-        #                         "file_name": "OSRS_5_Trailblazer_Reloaded_Tasks"
+        #                         "file_name": "OSRS_5_Raging_Echoes_Tasks"
         #                     },
     }
 
