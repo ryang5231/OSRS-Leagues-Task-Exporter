@@ -83,7 +83,7 @@ def get_task_excel(test_mode_enabled=False):
             area = r[REGION_ATTRIBUTE]
             task_title = cols[IDX_TASK_TITLE].get_text(" ", strip=True)
             verbose = helper.text_cleaner(cols[IDX_VERBOSE_DESCRIPTION].get_text(" ", strip=True))
-            skill_req = helper.text_cleaner(cols[IDX_SKILL_REQUIREMENTS].get_text(" ", strip=True))
+            skill_req = helper.parse_requirements(cols[IDX_SKILL_REQUIREMENTS])
             points = int(cols[IDX_POINTS].get_text(" ", strip=True))
             task_difficulty = difficulty_reference[points]
             percent_str = cols[IDX_PERCENT_COMPL].get_text(" ", strip=True)

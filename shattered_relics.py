@@ -85,7 +85,7 @@ def get_task_excel(test_mode_enabled=False):
             verbose = helper.text_cleaner(cols[IDX_VERBOSE_DESCRIPTION].get_text(" ", strip=True))
             task_difficulty = cols[IDX_TASK_DIFFICULTY].find("span", title=True)["title"]
             points = points_reference[task_difficulty]
-            skill_req = helper.text_cleaner(cols[IDX_SKILL_REQUIREMENTS].get_text(" ", strip=True))
+            skill_req = helper.parse_requirements(cols[IDX_SKILL_REQUIREMENTS])
             percent_str = cols[IDX_PERCENT_COMPL].get_text(" ", strip=True)
 
             percent_val = helper.parse_percent(percent_str)

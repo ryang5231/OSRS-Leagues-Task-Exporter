@@ -27,7 +27,7 @@ ROW_NUM_FIRST_DATA = 1
 
 def get_task_excel(test_mode_enabled=False):
     response = helper.fetch_html(TASKS_URL)
-    soup = BeautifulSoup(response.content, 'html.parser')
+    soup = BeautifulSoup(response, 'html.parser')
 
     difficulty_reference = {
         10 : "Easy",
@@ -79,6 +79,7 @@ def get_task_excel(test_mode_enabled=False):
     
     row_num = 1
     # print(type(rows[1221].find_all("td")[4]))
+    print(rows[1221])
     for r in rows:
         cols = r.find_all("td")
         if cols:
@@ -86,8 +87,6 @@ def get_task_excel(test_mode_enabled=False):
             task_title = cols[IDX_TASK_TITLE].get_text(" ", strip=True)
             verbose = helper.text_cleaner(cols[IDX_VERBOSE_DESCRIPTION].get_text(" ", strip=True))
             skill_req = helper.parse_requirements(cols[IDX_SKILL_REQUIREMENTS])
-            # print(cols[IDX_SKILL_REQUIREMENTS])
-            # print("heh")
             points = int(cols[IDX_POINTS].get_text(" ", strip=True))
             task_difficulty = difficulty_reference[points]
             percent_str = cols[IDX_PERCENT_COMPL].get_text(" ", strip=True)
@@ -113,7 +112,9 @@ def get_task_excel(test_mode_enabled=False):
                 else:
                     worksheet.write(row_num, i, row_data[i], row_format[rd])
 
-            worksheet.insert_checkbox(row_num, COL_NUM_COMPLETION_TICK, False, center_format)
+            completion_status = True if r.get("class") and 'wikisync-completed' in r.get("class") else False
+
+            worksheet.insert_checkbox(row_num, COL_NUM_COMPLETION_TICK, completion_status, center_format)
             
             row_num += 1
 
